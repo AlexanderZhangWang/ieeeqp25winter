@@ -1,0 +1,25 @@
+# Ignore IDE/editor config
+.idea/
+.vscode/
+
+# Ignore virtual environments
+.venv*/
+venv*/
+
+# Ignore Python cache and build artifacts
+__pycache__/
+dist/
+
+# Ignore coverage reports
+.coverage*
+htmlcov/
+
+# Ignore testing and build artifacts
+.tox/
+docs/_build/
+
+# Ignore environment files
+.env
+.env.*
+.env/
+env/

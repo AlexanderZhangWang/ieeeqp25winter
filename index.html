@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sensor Data Map</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet CSS (without integrity attribute) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" crossorigin=""/>
+
+  <style>
+    body { margin: 0; padding: 0; }
+    #map {
+      height: 85vh;
+      width: 100%;
+    }
+    #controls {
+      margin: 10px;
+      text-align: center;
+    }
+    #controls button {
+      padding: 8px 16px;
+      font-size: 16px;
+      margin: 0 5px;
+    }
+    .popup-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .popup-table th, .popup-table td {
+      border: 1px solid #ccc;
+      padding: 4px 8px;
+      text-align: center;
+    }
+    .popup-table th {
+      background-color: #f4f4f4;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <button id="refreshBtn" onclick="refreshData()">Refresh Data</button>
+    <button id="centerBtn" onclick="centerMap()">Center Map</button>
+  </div>
+  
+  <div id="map"></div>
+
+  <!-- Leaflet JS (without integrity attribute) -->
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js" crossorigin=""></script>
+  
+  <script>
+    // Initialize the map
+    var map = L.map('map').setView([32.85, -117.01], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Create a layer group for markers
+    var markers = L.layerGroup().addTo(map);
+
+    // Global variable to store the user's current location
+    var currentLocation = null;
+
+    // Start watching for the user's location
+    if (navigator.geolocation) {
+      navigator.geolocation.watchPosition(
+        function(position) {
+          currentLocation = position.coords;
+          map.setView([currentLocation.latitude, currentLocation.longitude], 15);
+        },
+        function(error) {
+          console.error("Error watching position: ", error);
+        }
+      );
+    } else {
+      alert("Geolocation is not supported by your browser.");
+    }
+
+    // Function to fetch data from the server and update markers
+    function fetchData() {
+      // Clear previous markers
+      markers.clearLayers();
+
+      // Update the URL to your Flask endpoint that returns JSON data
+      fetch('http://192.168.8.23:5000/get_data')
+        .then(response => response.json())
+        .then(data => {
+          // Group data points that are very close together (round lat/lon to 3 decimals)
+          var groupedData = {};
+          data.forEach(item => {
+            console.log(item);
+            var lat = parseFloat(item.gps_lat);
+            var lon = parseFloat(item.gps_long);
+            if (!isNaN(lat) && !isNaN(lon)) {
+              var latRounded = lat.toFixed(3);
+              var lonRounded = lon.toFixed(3);
+              var key = latRounded + "_" + lonRounded;
+              if (!groupedData[key]) {
+                groupedData[key] = [];
+              }
+              groupedData[key].push(item);
+            }
+          });
+
+          // Create a marker for each group and bind a popup with a table of data
+          Object.keys(groupedData).forEach(key => {
+            var group = groupedData[key];
+            var lat = parseFloat(group[0].gps_lat);
+            var lon = parseFloat(group[0].gps_long);
+            var marker = L.marker([lat, lon]);
+
+            var popupContent = `<table class="popup-table">
+              <thead>
+                <tr>
+                  <th>Analog</th>
+                  <th>Voltage</th>
+                  <th>TDS</th>
+                  <th>Turbidity</th>
+                  <th>Date</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody>`;
+            group.forEach(item => {
+              popupContent += `<tr>
+                <td>${item.analog_value}</td>
+                <td>${item.voltage}</td>
+                <td>${item.tds_value}</td>
+                <td>${item.turbidity}</td>
+                <td>${item.gps_date}</td>
+                <td>${item.gps_time}</td>
+              </tr>`;
+            });
+            popupContent += `</tbody></table>`;
+            marker.bindPopup(popupContent, { maxWidth: 600 });
+            markers.addLayer(marker);
+          });
+        })
+        .catch(err => console.error('Error fetching data:', err));
+    }
+
+    // Function to refresh the data when the "Refresh Data" button is clicked
+    function refreshData() {
+      fetchData();
+    }
+
+    // Function to center the map to the user's current location using cached coordinates
+    function centerMap() {
+        if (currentLocation) {
+          map.setView([currentLocation.latitude, currentLocation.longitude], 15);
+        } else {
+          navigator.geolocation.getCurrentPosition(
+            function(position) {
+              currentLocation = position.coords;
+              map.setView([currentLocation.latitude, currentLocation.longitude], 15);
+            },
+            function(error) {
+              console.error("Error getting location: ", error);
+              alert("Unable to retrieve your location.");
+            }
+          );
+        }
+    }
+
+    // Initial fetch on page load
+    fetchData();
+  </script>
+  <noscript>Sorry, JavaScript is required.</noscript>
+</body>
+</html>
