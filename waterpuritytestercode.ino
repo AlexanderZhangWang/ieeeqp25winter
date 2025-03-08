@@ -8,11 +8,9 @@
 
 #define SER_MON 1
 
+// Define network credentials
 const char* ssid = "A";
 const char* password = "88888888";
-
-LiquidCrystal_PCF8574 lcd(0x27);
-WebServer server(80);
 
 // Define constants
 const int TDS_PIN = 36;             // Analog input pin connected to the TDS sensor
@@ -21,8 +19,10 @@ const float VREF = 5.0;             // Reference voltage for Arduino (5V)
 const float ADC_RESOLUTION = 4096;  // 12-bit ADC resolution
 const float TEMP_COEFFICIENT = 0.02; // Compensation coefficient for water temperature (20°C as reference)
 
-// Create TinyGPS++ object
+// Instantiate objects
 TinyGPSPlus gps;
+LiquidCrystal_PCF8574 lcd(0x27);
+WebServer server(80);
 
 // Use Hardware Serial 2 for GPS
 HardwareSerial GPS_Serial(2);
